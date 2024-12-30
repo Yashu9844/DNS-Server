@@ -10,7 +10,7 @@ import {
 } from "../src/components/ui/table.tsx";
 import { Input } from "../src/components/ui/input.tsx";
 import { Button } from "../src/components/ui/button.tsx";
-import { Card } from "../src/components/ui/card.tsx";
+import { Card } from "./components/ui/card.tsx";
 
 const API_URL = 'http://localhost:3000';
 

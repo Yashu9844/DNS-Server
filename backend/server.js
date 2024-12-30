@@ -4,6 +4,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import DomainMapping from './model/inout.model.js';
 import cors from 'cors';
+import dns from "dns"
 // MongoDB setup
 const DATABASE_URL = "mongodb+srv://yashu:yashu@cluster0.3rzmd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
 
@@ -91,7 +92,9 @@ server.bind(PORT, () => {
 
 // API for React UI
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173',  // Allow React frontend origin
+}));
 app.use(express.json());
 
 // Get all domain mappings
@@ -156,3 +159,57 @@ app.get('/domains/search', async (req, res) => {
 });
 
 app.listen(3000, () => console.log('API server running on port 3000.'));
+
+
+
+import { Server } from 'socket.io';
+
+// Set up WebSocket server
+const io = new Server(3001, {
+    cors: {
+        origin: ["http://localhost:3000", "http://localhost:5173"], // Allow both origins
+        methods: ["GET", "POST"],
+    },
+});
+
+// WebSocket event handlers
+// io.on('connection', (socket) => {
+//     console.log('WebSocket connection established.');
+
+//     // Listen for DNS query events from the client
+//     socket.on('dns-query', async (data) => {
+//         const { query } = data;
+//         console.log(`Received query: ${query}`);
+
+//         try {
+//             const mapping = await DomainMapping.findOne({ domain: query });
+//             const ip = mapping ? mapping.ip : '127.0.0.1'; // Default IP if not found
+//             const response = { query, response: ip, from: 'Backend' };
+
+//             // Emit the response back to the client
+//             socket.emit('dns-log', response);
+//         } catch (error) {
+//             console.error('Error handling DNS query:', error);
+//             socket.emit('dns-log', { query, response: 'Error', from: 'Backend' });
+//         }
+//     });
+
+//     socket.on('disconnect', () => {
+//         console.log('WebSocket connection closed.');
+//     });
+// });
+
+app.get('/dns-query', (req, res) => {
+    const domain = req.query.domain;
+    if (!domain) {
+        return res.status(400).send('Domain is required');
+    }
+
+    dns.lookup(domain, (err, address) => {
+        if (err) {
+            console.error('DNS lookup failed:', err);  // Log the error
+            return res.status(500).send('Error resolving domain');
+        }
+        res.json({ domain, ip: address });
+    });
+});
