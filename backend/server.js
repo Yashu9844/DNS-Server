@@ -1,25 +1,36 @@
 import dgram from 'dgram';
 import fs from 'fs';
+import express from 'express';
+import mongoose from 'mongoose';
+import DomainMapping from './model/inout.model.js';
+import cors from 'cors';
+// MongoDB setup
+const DATABASE_URL = "mongodb+srv://yashu:yashu@cluster0.3rzmd.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" 
 
+mongoose.connect(DATABASE_URL);
+const db = mongoose.connection;
+
+db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+db.once('open', () => {
+    console.log('Connected to MongoDB.');
+});
+
+
+
+
+
+// UDP Server for DNS
 const server = dgram.createSocket('udp4');
 const PORT = 5352;
-const DOMAIN_MAPPINGS_FILE = './domainMappings.json';
-
-// Load domain mappings
-let domainMappings = JSON.parse(fs.readFileSync(DOMAIN_MAPPINGS_FILE, 'utf-8'));
-
-// Save domain mappings back to file
-function saveMappings() {
-    fs.writeFileSync(DOMAIN_MAPPINGS_FILE, JSON.stringify(domainMappings, null, 2));
-}
 
 // Handle DNS Queries
-function handleDnsQuery(msg) {
+async function handleDnsQuery(msg) {
     const queryName = parseDnsQueryName(msg);
 
     console.log(`DNS Query for: ${queryName}`);
 
-    const ip = domainMappings[queryName] || '127.0.0.1'; // Default IP if domain is not found
+    const mapping = await DomainMapping.findOne({ domain: queryName });
+    const ip = mapping ? mapping.ip : '127.0.0.1'; // Default IP if domain is not found
 
     // Build DNS response
     const response = Buffer.alloc(512);
@@ -60,8 +71,8 @@ function parseDnsQueryName(msg) {
 }
 
 // Event listeners
-server.on('message', (msg, rinfo) => {
-    const response = handleDnsQuery(msg);
+server.on('message', async (msg, rinfo) => {
+    const response = await handleDnsQuery(msg);
     server.send(response, rinfo.port, rinfo.address, (err) => {
         if (err) console.error('Error sending response:', err);
     });
@@ -76,48 +87,71 @@ server.bind(PORT, () => {
     console.log(`DNS server is listening on port ${PORT}`);
 });
 
+
+
 // API for React UI
-import express from 'express';
-import mongoose from 'mongoose';
 const app = express();
-
-const DATABASE_URL = process.env.DATABASE_URL ;
-
-mongoose.connect(DATABASE_URL).then(()=>{
-    console.log("Connected to the database");
-}).catch(err => console.error)
-
-
-
-
+app.use(cors());
 app.use(express.json());
 
 // Get all domain mappings
-app.get('/domains', (req, res) => {
-    res.json(domainMappings);
+app.get('/domains', async (req, res) => {
+    const mappings = await DomainMapping.find();
+    res.json(mappings.reduce((acc, mapping) => {
+        acc[mapping.domain] = mapping.ip;
+        return acc;
+    }, {}));
 });
 
 // Add or update domain mapping
-app.post('/domains', (req, res) => {
+app.post('/domains', async (req, res) => {
     const { domain, ip } = req.body;
     if (domain && ip) {
-        domainMappings[domain] = ip;
-        saveMappings();
-        res.status(200).json({ message: 'Domain added/updated successfully.' });
+        try {
+            await DomainMapping.findOneAndUpdate({ domain }, { ip }, { upsert: true });
+            res.status(200).json({ message: 'Domain added/updated successfully.' });
+        } catch (error) {
+            res.status(500).json({ message: 'Error saving domain mapping.' });
+        }
     } else {
         res.status(400).json({ message: 'Invalid data.' });
     }
 });
 
 // Delete domain mapping
-app.delete('/domains/:domain', (req, res) => {
+app.delete('/domains/:domain', async (req, res) => {
     const { domain } = req.params;
-    if (domainMappings[domain]) {
-        delete domainMappings[domain];
-        saveMappings();
-        res.status(200).json({ message: 'Domain deleted successfully.' });
-    } else {
-        res.status(404).json({ message: 'Domain not found.' });
+    try {
+        const result = await DomainMapping.findOneAndDelete({ domain });
+        if (result) {
+            res.status(200).json({ message: 'Domain deleted successfully.' });
+        } else {
+            res.status(404).json({ message: 'Domain not found.' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting domain mapping.' });
+    }
+});
+// Search for domains matching a query
+app.get('/domains/search', async (req, res) => {
+    const { query } = req.query;
+    if (!query) {
+        return res.status(400).json({ message: 'Search query is required.' });
+    }
+
+    try {
+        const mappings = await DomainMapping.find({ 
+            domain: { $regex: query, $options: 'i' } // Case-insensitive search
+        });
+
+        const result = mappings.reduce((acc, mapping) => {
+            acc[mapping.domain] = mapping.ip;
+            return acc;
+        }, {});
+
+        res.status(200).json(result);
+    } catch (error) {
+        res.status(500).json({ message: 'Error searching domains.' });
     }
 });
 
