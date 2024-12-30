@@ -52,19 +52,21 @@ const DNSClient = () => {
 
       {/* Display the DNS Response in a simple Card layout */}
       {dnsResponse && (
-        <div className="max-w-md mx-auto bg-white shadow-md rounded-md p-4 border">
-          <div className="border-b pb-4 mb-4">
-            <h3 className="text-lg font-semibold">DNS Response</h3>
-          </div>
-          <div className="space-y-2">
-            <p><strong>Domain:</strong> {dnsResponse.domain}</p>
-            <p><strong>IP Address:</strong> {dnsResponse.ip}</p>
-          </div>
-          <div className="border-t pt-4 mt-4">
-            <p className="text-sm text-gray-500">Query completed successfully.</p>
-          </div>
-        </div>
-      )}
+  <div className="max-w-md mx-auto bg-white dark:bg-gray-800 text-black dark:text-white shadow-md rounded-md p-4 border dark:border-gray-700">
+    <div className="border-b dark:border-gray-700 pb-4 mb-4">
+      <h3 className="text-lg font-semibold">DNS Response</h3>
+    </div>
+    <div className="space-y-2">
+      <p><strong>Domain:</strong> {dnsResponse.domain}</p>
+      <p><strong>IP Address:</strong> {dnsResponse.ip}</p>
+    </div>
+    <div className="border-t dark:border-gray-700 pt-4 mt-4">
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Query completed successfully.
+      </p>
+    </div>
+  </div>
+)}
     </div>
   );
 };
