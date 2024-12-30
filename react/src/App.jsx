@@ -6,8 +6,8 @@ import ThemeToggle from './ThemeToggle';
 function App() {
     return (
       <div className="p-6 space-y-6 bg-white text-black dark:bg-gray-900 dark:text-white">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Dynamic DNS Management</h1>
+        <div className="flex justify-evenly items-center">
+          <h1 className="text-3xl font-bold ">Dynamic DNS Management</h1>
           <ThemeToggle />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
