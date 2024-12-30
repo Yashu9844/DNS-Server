@@ -78,7 +78,18 @@ server.bind(PORT, () => {
 
 // API for React UI
 import express from 'express';
+import mongoose from 'mongoose';
 const app = express();
+
+const DATABASE_URL = process.env.DATABASE_URL ;
+
+mongoose.connect(DATABASE_URL).then(()=>{
+    console.log("Connected to the database");
+}).catch(err => console.error)
+
+
+
+
 app.use(express.json());
 
 // Get all domain mappings
